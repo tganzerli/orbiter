@@ -279,7 +279,7 @@ final class HttpDispatcher {
     Request? request,
   ) {
     final where = request == null ? '' : ' ${request.method} ${request.uri.path}';
-    stderr.writeln('[dart_backend_framework] unhandled error$where: $error');
+    stderr.writeln('[orbiter] unhandled error$where: $error');
   }
 
   static final Response _payloadTooLarge = Response(

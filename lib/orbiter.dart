@@ -1,5 +1,5 @@
 /// High-throughput, low-allocation HTTP backend framework for Dart.
-library dart_backend_framework;
+library orbiter;
 
 export 'src/context/request_context.dart';
 export 'src/pipeline/handler.dart';

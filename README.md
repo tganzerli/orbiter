@@ -1,16 +1,16 @@
-# dart_backend_framework
+# orbiter
 
 High-throughput, low-allocation HTTP backend framework for Dart.
 
 ## Overview
 
-`dart_backend_framework` is an HTTP transport and execution framework designed to avoid unnecessary
+`orbiter` is an HTTP transport and execution framework designed to avoid unnecessary
 garbage-collector pressure and to stay close to the throughput of raw `dart:io`.
 
 It has no database dependency. Each database gets one kit, a separate package that holds the pieces for using the
 framework together with that database's connector:
-[`dart_backend_framework_postgres`](https://github.com/tganzerli/dart_backend_framework_postgres) is the PostgreSQL
-kit over [`dart_db_connector_postgres`](https://github.com/tganzerli/dart_db_connector_postgres), with a per-request
+[`orbiter_postgres`](https://github.com/tganzerli/orbiter_postgres) is the PostgreSQL
+kit over [`slingshot_postgres`](https://github.com/tganzerli/slingshot_postgres), with a per-request
 row-level-security transaction (`rlsTransaction`) and a prefix search builder (`prefixTsQuery`). An app depends on
 the framework and on the kit of each database it uses (several are fine).
 
@@ -18,10 +18,10 @@ the framework and on the kit of each database it uses (several are fine).
 
 ```yaml
 dependencies:
-  dart_backend_framework:
+  orbiter:
     git:
-      url: https://github.com/tganzerli/dart_backend_framework
-      ref: v0.1.1
+      url: https://github.com/tganzerli/orbiter
+      ref: v0.1.2
 ```
 
 ## Core Architecture Principles
@@ -37,7 +37,7 @@ dependencies:
 
 ```dart
 import 'dart:io';
-import 'package:dart_backend_framework/dart_backend_framework.dart';
+import 'package:orbiter/orbiter.dart';
 
 void main() async {
   final router = Router();
@@ -156,8 +156,8 @@ it somewhere else, e.g. `requestLogger(logFn: log.info)`.
 
 ## Example with PostgreSQL
 
-A runnable CRUD server wired to `dart_db_connector_postgres` lives in the
-[`dart_backend_framework_postgres`](https://github.com/tganzerli/dart_backend_framework_postgres) repository
+A runnable CRUD server wired to `slingshot_postgres` lives in the
+[`orbiter_postgres`](https://github.com/tganzerli/orbiter_postgres) repository
 (`example/postgres_crud_server.dart`), because it is the package that depends on both.
 
 ## License

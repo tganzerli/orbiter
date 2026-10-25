@@ -1,11 +1,11 @@
-name: dart_backend_framework
+name: orbiter
 description: >
   High-throughput, low-allocation HTTP backend framework for Dart.
   Designed for maximum concurrency and minimal GC pressure over dart:io.
-version: 0.1.1
+version: 0.1.2
 publish_to: none
 
-repository: https://github.com/tganzerli/dart_backend_framework
+repository: https://github.com/tganzerli/orbiter
 
 environment:
   sdk: ^3.6.0

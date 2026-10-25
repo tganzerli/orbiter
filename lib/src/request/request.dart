@@ -6,7 +6,7 @@ import 'dart:typed_data';
 import '../context/request_context.dart';
 import 'payload_too_large_exception.dart';
 
-/// Represents an incoming HTTP request in `dart_backend_framework`.
+/// Represents an incoming HTTP request in `orbiter`.
 ///
 /// Provides type-safe request metadata, route parameters, context storage,
 /// body reading utilities, and guaranteed cleanup hook registration.

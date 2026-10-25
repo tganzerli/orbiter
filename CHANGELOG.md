@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+Renamed from `dart_backend_framework` to `orbiter`; the repository moved with it. No API change: only the package
+name, the library import (`package:orbiter/orbiter.dart`) and the dependency key change.
+
 ## 0.1.1
 
 Documentation only; no code change.

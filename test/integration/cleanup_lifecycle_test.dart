@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dart_backend_framework/dart_backend_framework.dart';
+import 'package:orbiter/orbiter.dart';
 import 'package:test/test.dart';
 
 /// Controlled simulation of a resource with a lifecycle (e.g. a connection borrowed from a pool).
