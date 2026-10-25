@@ -14,14 +14,10 @@ kit over [`slingshot_postgres`](https://github.com/tganzerli/slingshot_postgres)
 row-level-security transaction (`rlsTransaction`) and a prefix search builder (`prefixTsQuery`). An app depends on
 the framework and on the kit of each database it uses (several are fine).
 
-**Experimental, not on pub.dev yet.** Install by `git` reference to a tag:
+Experimental (pre-1.0). Install from pub.dev:
 
-```yaml
-dependencies:
-  orbiter:
-    git:
-      url: https://github.com/tganzerli/orbiter
-      ref: v0.1.2
+```sh
+dart pub add orbiter
 ```
 
 ## Core Architecture Principles
