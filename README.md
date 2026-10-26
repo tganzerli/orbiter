@@ -1,33 +1,46 @@
 # orbiter
 
-High-throughput, low-allocation HTTP backend framework for Dart.
+[![pub package](https://img.shields.io/pub/v/orbiter.svg)](https://pub.dev/packages/orbiter)
+[![pub points](https://img.shields.io/pub/points/orbiter)](https://pub.dev/packages/orbiter/score)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Overview
+**An HTTP backend framework for Dart designed to stay close to raw `dart:io`, with the routing, interceptors and
+cleanup you would otherwise write by hand.**
 
-`orbiter` is an HTTP transport and execution framework designed to avoid unnecessary
-garbage-collector pressure and to stay close to the throughput of raw `dart:io`.
+On a simple endpoint, a large share of a Dart server's time can go to the framework rather than to your code:
+wrapper objects, buffered bodies, zone lookups, a middleware chain rebuilt on every call. orbiter is designed
+around removing that overhead. Responses stream straight to `dart:io`'s `HttpResponse`, the interceptor chain is
+folded once at startup, routes are matched in a radix tree, and per-request state lives on the request itself
+instead of in zones. What you get on top is the part every backend needs: typed request context, error boundaries,
+safe defaults, and cleanup hooks that run only after the response is fully written, so a pooled database connection
+always goes back.
 
-It has no database dependency. Each database gets one kit, a separate package that holds the pieces for using the
-framework together with that database's connector:
-[`orbiter_postgres`](https://github.com/tganzerli/orbiter_postgres) is the PostgreSQL
-kit over [`slingshot_postgres`](https://github.com/tganzerli/slingshot_postgres), with a per-request
-row-level-security transaction (`rlsTransaction`) and a prefix search builder (`prefixTsQuery`). An app depends on
-the framework and on the kit of each database it uses (several are fine).
+It has no database dependency. Each database gets a small kit package that wires it in; for PostgreSQL that is
+[`orbiter_postgres`](https://pub.dev/packages/orbiter_postgres), with one row-level-security transaction per
+request in a single interceptor.
 
-Experimental (pre-1.0). Install from pub.dev:
+## Features
+
+- **Streaming responses:** bodies go straight to `HttpResponse`, with no pre-buffering and few intermediate objects
+  on the request path.
+- **Pipeline folded at startup:** interceptors are composed once, when the handler is built, so a request pays no
+  chain-assembly cost; any interceptor can short-circuit.
+- **Radix router:** lookup by path segment, static routes before dynamic ones, parameters (`:id`), wildcards
+  (`*path`), and correct `404` and `405` with the `Allow` header.
+- **Typed request context without zones:** `request.context.set(value)` / `get<T>()`, stored on the request.
+- **Guaranteed cleanup:** hooks run in reverse order after the response is written (streamed bodies included),
+  also on uncaught errors and client disconnects.
+- **Safe defaults:** a 1 MiB body limit, generic `500`s to the client with details only on the server, CORS that
+  refuses `*` with credentials, graceful shutdown that drains in-flight requests; `securityHeaders()` and
+  `requestLogger()` ready to add.
+
+## Install
 
 ```sh
 dart pub add orbiter
 ```
 
-## Core Architecture Principles
-
-1. **High Throughput & Low Allocation (P1/P2)**: Direct streaming to native `HttpResponse` without pre-buffering; minimal intermediate objects in the request critical path.
-2. **Type-Safe RequestContext without Zone (P3)**: Heterogeneous O(1) typed storage directly on the `Request` instance, avoiding the asynchronous performance tax of Dart `ZoneValues`.
-3. **Composable Pre-Folded Pipeline (P4)**: Interceptors chained and statically folded at server startup with zero per-request allocation overhead and short-circuit support.
-4. **Radix/Trie High Performance Router (P5)**: O(k) URL segment lookup with static route precedence, dynamic parameters (`:id`), wildcards (`*path`), 405 Method Not Allowed (`Allow` header) and 404 Not Found.
-5. **Guaranteed Lifecycle Cleanup (P6)**: LIFO execution of cleanup hooks (`request.addCleanupHook`) in a `try/finally` that closes only **after the response is fully written** (streamed bodies included), so connections borrowed from pools are released deterministically, also upon uncaught errors or client TCP disconnects.
-6. **Decoupled Architecture (P7)**: Database-agnostic web transport; database access lives in the app or in a database kit.
+Experimental (pre-1.0).
 
 ## Quickstart
 
@@ -58,6 +71,19 @@ void main() async {
   print('Server listening on http://localhost:${server.port}');
 }
 ```
+
+[`example/main.dart`](example/main.dart) adds an interceptor of its own and a graceful shutdown.
+
+## The family
+
+| Package | Role |
+|---|---|
+| [`orbiter`](https://pub.dev/packages/orbiter) | This framework. |
+| [`orbiter_postgres`](https://pub.dev/packages/orbiter_postgres) | PostgreSQL kit: one row-level-security transaction per request, prefix search. |
+| [`slingshot_postgres`](https://pub.dev/packages/slingshot_postgres) | PostgreSQL driver over `libpq`, with a native connection pool. |
+| [`slingshot`](https://pub.dev/packages/slingshot) | The contract every slingshot driver implements. |
+
+An app depends on the framework and on the kit of each database it uses.
 
 ## Writing an interceptor
 
@@ -152,9 +178,19 @@ it somewhere else, e.g. `requestLogger(logFn: log.info)`.
 
 ## Example with PostgreSQL
 
-A runnable CRUD server wired to `slingshot_postgres` lives in the
-[`orbiter_postgres`](https://github.com/tganzerli/orbiter_postgres) repository
-(`example/postgres_crud_server.dart`), because it is the package that depends on both.
+A runnable CRUD server wired to `slingshot_postgres` is the example of
+[`orbiter_postgres`](https://pub.dev/packages/orbiter_postgres/example), because it is the package that depends on
+both.
+
+## Benchmarks and research
+
+The project started as an MBA thesis in Software Engineering at the University of São Paulo (USP), whose
+cross-language benchmark suite found that, on endpoints without database access, swapping the HTTP framework for a
+raw `dart:io` server raised throughput by 55% to 60% with the same driver. orbiter was built from that finding. The
+suite, the results and the evaluated code are public at
+[tganzerli/dart_db_connector](https://github.com/tganzerli/dart_db_connector) (see
+[`benchmarks/RESULTS.md`](https://github.com/tganzerli/dart_db_connector/blob/main/benchmarks/RESULTS.md)).
+orbiter's own throughput measurements are not published there yet.
 
 ## License
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+Documentation only: README rewritten, a runnable example (`example/main.dart`), dartdoc on the `Request`,
+`Response` and `PayloadTooLargeException` constructors. No API change.
+
 ## 0.1.3
 
 First release on pub.dev. No API change.

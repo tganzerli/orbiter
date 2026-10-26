@@ -16,6 +16,8 @@ class Response {
   /// JSON-serializable [Map]/[List], or `null`.
   final Object? body;
 
+  /// Creates a response with [statusCode]; the named constructors cover the
+  /// common statuses.
   const Response(
     this.statusCode, {
     this.headers = const <String, List<String>>{},

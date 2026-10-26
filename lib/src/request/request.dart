@@ -38,6 +38,8 @@ class Request {
 
   Uint8List? _cachedBodyBytes;
 
+  /// Creates a request. The server builds one per incoming `HttpRequest`;
+  /// tests build them directly, with an optional [bodyStream].
   Request({
     required this.method,
     required this.uri,

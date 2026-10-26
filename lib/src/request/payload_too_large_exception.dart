@@ -4,6 +4,7 @@ final class PayloadTooLargeException implements Exception {
   /// Limit in bytes that was exceeded.
   final int limit;
 
+  /// Creates the exception for a body larger than [limit] bytes.
   const PayloadTooLargeException(this.limit);
 
   @override
