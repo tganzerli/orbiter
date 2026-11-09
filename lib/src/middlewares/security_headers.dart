@@ -23,7 +23,8 @@ InterceptorFunction securityHeaders({
   };
 
   if (strictTransportSecurity != null) {
-    headers['strict-transport-security'] = List.unmodifiable([strictTransportSecurity]);
+    headers['strict-transport-security'] =
+        List.unmodifiable([strictTransportSecurity]);
   }
 
   return (request, next) async {

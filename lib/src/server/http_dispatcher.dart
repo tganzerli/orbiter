@@ -76,7 +76,8 @@ final class HttpDispatcher {
   /// Processes a single HTTP request emitted by the [HttpServer].
   Future<void> dispatch(HttpRequest ioRequest) async {
     _inFlight++;
-    final request = Request.fromHttpRequest(ioRequest, maxBodySize: maxBodySize);
+    final request =
+        Request.fromHttpRequest(ioRequest, maxBodySize: maxBodySize);
 
     try {
       Response response;
@@ -278,7 +279,8 @@ final class HttpDispatcher {
     StackTrace stackTrace,
     Request? request,
   ) {
-    final where = request == null ? '' : ' ${request.method} ${request.uri.path}';
+    final where =
+        request == null ? '' : ' ${request.method} ${request.uri.path}';
     stderr.writeln('[orbiter] unhandled error$where: $error');
   }
 

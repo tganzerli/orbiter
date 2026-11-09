@@ -53,7 +53,8 @@ void main() {
       );
     });
 
-    test('supports shared: true on same port for multi-worker scaling', () async {
+    test('supports shared: true on same port for multi-worker scaling',
+        () async {
       // 1. Creates the first server with shared: true
       final server1 = await BackendServer.bind(
         address: InternetAddress.loopbackIPv4,
@@ -94,7 +95,8 @@ void main() {
     setUp(() => client = HttpClient());
     tearDown(() => client.close(force: true));
 
-    test('close waits for in-flight requests and their cleanup hooks', () async {
+    test('close waits for in-flight requests and their cleanup hooks',
+        () async {
       final entered = Completer<void>();
       final gate = Completer<void>();
       var hookDone = false;
@@ -122,7 +124,8 @@ void main() {
       var closed = false;
       final closing = server.close().then((_) => closed = true);
       await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(closed, isFalse, reason: 'close must wait for the in-flight request');
+      expect(closed, isFalse,
+          reason: 'close must wait for the in-flight request');
 
       gate.complete();
       expect(await pending, 'late');
@@ -178,7 +181,8 @@ void main() {
         },
       );
 
-      final req = await client.getUrl(Uri.parse('http://127.0.0.1:${server.port}/'));
+      final req =
+          await client.getUrl(Uri.parse('http://127.0.0.1:${server.port}/'));
       unawaited(req.close().then<void>((_) {}, onError: (_) {}));
       await entered.future;
       client.close(force: true);
@@ -227,7 +231,9 @@ void main() {
           Stream<List<int>> body() async* {
             for (var i = 0; i < 6; i++) {
               await Future<void>.delayed(const Duration(milliseconds: 3));
-              if (cleanupStarted) stepsAfterCleanup++; // work on a resource already handed back
+              if (cleanupStarted) {
+                stepsAfterCleanup++; // work on a resource already handed back
+              }
               yield utf8.encode('step$i|');
             }
           }
@@ -238,7 +244,8 @@ void main() {
       for (var i = 0; i < 20; i++) {
         cleanupStarted = false;
         final c = HttpClient();
-        final req = await c.getUrl(Uri.parse('http://127.0.0.1:${server.port}/'));
+        final req =
+            await c.getUrl(Uri.parse('http://127.0.0.1:${server.port}/'));
         unawaited(req.close().then<void>((_) {}, onError: (_) {}));
         await Future<void>.delayed(Duration(milliseconds: i % 8));
         c.close(force: true);

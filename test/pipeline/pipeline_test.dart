@@ -25,28 +25,27 @@ final class _CustomHeaderInterceptor implements Interceptor {
 
 void main() {
   group('Pipeline & Interceptor Chaining', () {
-    test('executes interceptors in FIFO order on request and LIFO order on response', () async {
+    test(
+        'executes interceptors in FIFO order on request and LIFO order on response',
+        () async {
       final executionTrace = <String>[];
 
-      final pipeline = Pipeline()
-          .add((request, next) async {
-            executionTrace.add('interceptor-1-enter');
-            final response = await next(request);
-            executionTrace.add('interceptor-1-exit');
-            return response;
-          })
-          .add((request, next) async {
-            executionTrace.add('interceptor-2-enter');
-            final response = await next(request);
-            executionTrace.add('interceptor-2-exit');
-            return response;
-          })
-          .add((request, next) async {
-            executionTrace.add('interceptor-3-enter');
-            final response = await next(request);
-            executionTrace.add('interceptor-3-exit');
-            return response;
-          });
+      final pipeline = Pipeline().add((request, next) async {
+        executionTrace.add('interceptor-1-enter');
+        final response = await next(request);
+        executionTrace.add('interceptor-1-exit');
+        return response;
+      }).add((request, next) async {
+        executionTrace.add('interceptor-2-enter');
+        final response = await next(request);
+        executionTrace.add('interceptor-2-exit');
+        return response;
+      }).add((request, next) async {
+        executionTrace.add('interceptor-3-enter');
+        final response = await next(request);
+        executionTrace.add('interceptor-3-exit');
+        return response;
+      });
 
       final handler = pipeline.addHandler((request) async {
         executionTrace.add('root-handler');
@@ -72,24 +71,23 @@ void main() {
       ]);
     });
 
-    test('supports short-circuit preventing downstream interceptors and root handler', () async {
+    test(
+        'supports short-circuit preventing downstream interceptors and root handler',
+        () async {
       var downstreamExecuted = false;
       var rootExecuted = false;
 
-      final pipeline = Pipeline()
-          .add((request, next) async {
-            // Interceptor 1: passes through
-            return next(request);
-          })
-          .add((request, next) async {
-            // Interceptor 2: short-circuits with 401
-            return Response.unauthorized(body: 'unauthorized');
-          })
-          .add((request, next) async {
-            // Interceptor 3: must not be executed
-            downstreamExecuted = true;
-            return next(request);
-          });
+      final pipeline = Pipeline().add((request, next) async {
+        // Interceptor 1: passes through
+        return next(request);
+      }).add((request, next) async {
+        // Interceptor 2: short-circuits with 401
+        return Response.unauthorized(body: 'unauthorized');
+      }).add((request, next) async {
+        // Interceptor 3: must not be executed
+        downstreamExecuted = true;
+        return next(request);
+      });
 
       final handler = pipeline.addHandler((request) {
         rootExecuted = true;
@@ -109,7 +107,9 @@ void main() {
       expect(rootExecuted, isFalse);
     });
 
-    test('propagates typed RequestContext across upstream and downstream handlers', () async {
+    test(
+        'propagates typed RequestContext across upstream and downstream handlers',
+        () async {
       final pipeline = Pipeline().add((request, next) async {
         // Simulates an authentication middleware injecting an identity into the RequestContext
         request.context.set(const _AuthenticatedUser('user-uuid-99', 'admin'));

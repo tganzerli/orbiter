@@ -53,7 +53,15 @@ final class Router {
   /// Registers the same [handler] for the main HTTP methods (GET, POST, PUT, DELETE, PATCH,
   /// HEAD, OPTIONS).
   void all(String path, Handler handler) {
-    const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
+    const methods = [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+      'PATCH',
+      'HEAD',
+      'OPTIONS'
+    ];
     for (final method in methods) {
       add(method, path, handler);
     }

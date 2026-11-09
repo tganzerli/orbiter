@@ -8,5 +8,6 @@ final class PayloadTooLargeException implements Exception {
   const PayloadTooLargeException(this.limit);
 
   @override
-  String toString() => 'PayloadTooLargeException: request body exceeds $limit bytes';
+  String toString() =>
+      'PayloadTooLargeException: request body exceeds $limit bytes';
 }

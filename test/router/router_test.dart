@@ -6,7 +6,8 @@ import 'package:test/test.dart';
 
 void main() {
   group('Router Unit Tests', () {
-    test('matches static routes at multiple levels and normalizes slashes', () async {
+    test('matches static routes at multiple levels and normalizes slashes',
+        () async {
       final router = Router();
 
       router.get('/', (request) => Response.ok(body: 'root'));
@@ -77,11 +78,14 @@ void main() {
       expect(res3.statusCode, equals(200));
     });
 
-    test('static routes take precedence over dynamic parameter routes', () async {
+    test('static routes take precedence over dynamic parameter routes',
+        () async {
       final router = Router();
 
-      router.get('/users/active', (request) => Response.ok(body: 'static-active'));
-      router.get('/users/:id', (request) => Response.ok(body: 'param-${request.pathParam("id")}'));
+      router.get(
+          '/users/active', (request) => Response.ok(body: 'static-active'));
+      router.get('/users/:id',
+          (request) => Response.ok(body: 'param-${request.pathParam("id")}'));
 
       // Exact match to static child
       final activeRes = await router(Request(
@@ -116,7 +120,9 @@ void main() {
       expect(res.body, equals('filepath:css/themes/dark.min.css'));
     });
 
-    test('returns 405 Method Not Allowed with Allow header when route exists for other methods', () async {
+    test(
+        'returns 405 Method Not Allowed with Allow header when route exists for other methods',
+        () async {
       final router = Router();
 
       router.get('/items', (request) => Response.ok(body: 'get-items'));
@@ -136,7 +142,8 @@ void main() {
     test('supports .all() shorthand method registration', () async {
       final router = Router();
 
-      router.all('/ping', (request) => Response.ok(body: 'pong-${request.method}'));
+      router.all(
+          '/ping', (request) => Response.ok(body: 'pong-${request.method}'));
 
       for (final m in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']) {
         final res = await router(Request(
@@ -148,7 +155,8 @@ void main() {
       }
     });
 
-    test('returns 404 for unknown route, or delegates to notFoundHandler', () async {
+    test('returns 404 for unknown route, or delegates to notFoundHandler',
+        () async {
       final router = Router();
       router.get('/known', (request) => Response.ok(body: 'ok'));
 
@@ -163,7 +171,9 @@ void main() {
       // Custom 404
       router.notFoundHandler = (request) => Response.notFound(
             body: jsonEncode({'error': 'custom-not-found'}),
-            headers: {'content-type': ['application/json']},
+            headers: {
+              'content-type': ['application/json']
+            },
           );
 
       final custom404 = await router(Request(
@@ -185,7 +195,11 @@ void main() {
       client = HttpClient();
 
       final router = Router();
-      router.get('/health', (request) => Response.ok(body: '{"status":"healthy"}', headers: {'content-type': ['application/json']}));
+      router.get(
+          '/health',
+          (request) => Response.ok(body: '{"status":"healthy"}', headers: {
+                'content-type': ['application/json']
+              }));
       router.post('/echo', (request) async {
         final bodyStr = await request.readAsString();
         return Response.ok(body: 'echoed:$bodyStr');
@@ -199,9 +213,8 @@ void main() {
         return Response.ok(body: 'file:$file');
       });
 
-      final app = Pipeline()
-          .add(cors(origins: ['*']))
-          .addHandler(router.handler);
+      final app =
+          Pipeline().add(cors(origins: ['*'])).addHandler(router.handler);
 
       server = await BackendServer.bind(
         handler: app,
@@ -216,9 +229,11 @@ void main() {
       await server.close(force: true);
     });
 
-    test('routes real HTTP client requests through Pipeline and Trie Router', () async {
+    test('routes real HTTP client requests through Pipeline and Trie Router',
+        () async {
       // 1. GET /health
-      final req1 = await client.getUrl(Uri.parse('http://127.0.0.1:$port/health'));
+      final req1 =
+          await client.getUrl(Uri.parse('http://127.0.0.1:$port/health'));
       final res1 = await req1.close();
       expect(res1.statusCode, equals(200));
       expect(res1.headers.value('access-control-allow-origin'), equals('*'));
@@ -226,7 +241,8 @@ void main() {
       expect(body1, equals('{"status":"healthy"}'));
 
       // 2. POST /echo with body
-      final req2 = await client.postUrl(Uri.parse('http://127.0.0.1:$port/echo'));
+      final req2 =
+          await client.postUrl(Uri.parse('http://127.0.0.1:$port/echo'));
       req2.write('hello-router');
       final res2 = await req2.close();
       expect(res2.statusCode, equals(200));
@@ -234,27 +250,31 @@ void main() {
       expect(body2, equals('echoed:hello-router'));
 
       // 3. GET /users/777
-      final req3 = await client.getUrl(Uri.parse('http://127.0.0.1:$port/users/777'));
+      final req3 =
+          await client.getUrl(Uri.parse('http://127.0.0.1:$port/users/777'));
       final res3 = await req3.close();
       expect(res3.statusCode, equals(200));
       final body3 = await utf8.decoder.bind(res3).join();
       expect(body3, equals('user-777'));
 
       // 4. GET /static/assets/img/logo.svg
-      final req4 = await client.getUrl(Uri.parse('http://127.0.0.1:$port/static/assets/img/logo.svg'));
+      final req4 = await client.getUrl(
+          Uri.parse('http://127.0.0.1:$port/static/assets/img/logo.svg'));
       final res4 = await req4.close();
       expect(res4.statusCode, equals(200));
       final body4 = await utf8.decoder.bind(res4).join();
       expect(body4, equals('file:assets/img/logo.svg'));
 
       // 5. 405 Method Not Allowed on POST /health
-      final req5 = await client.postUrl(Uri.parse('http://127.0.0.1:$port/health'));
+      final req5 =
+          await client.postUrl(Uri.parse('http://127.0.0.1:$port/health'));
       final res5 = await req5.close();
       expect(res5.statusCode, equals(405));
       expect(res5.headers.value('allow'), equals('GET'));
 
       // 6. 404 on nonexistent route
-      final req6 = await client.getUrl(Uri.parse('http://127.0.0.1:$port/nonexistent'));
+      final req6 =
+          await client.getUrl(Uri.parse('http://127.0.0.1:$port/nonexistent'));
       final res6 = await req6.close();
       expect(res6.statusCode, equals(404));
     });
@@ -264,12 +284,15 @@ void main() {
     Request get(String path, [String method = 'GET']) =>
         Request(method: method, uri: Uri.parse('http://localhost$path'));
 
-    test('param names belong to the route, not to the shared tree node', () async {
+    test('param names belong to the route, not to the shared tree node',
+        () async {
       final router = Router()
-        ..get('/users/:id', (r) => Response.ok(body: 'user:${r.pathParam('id')}'))
+        ..get(
+            '/users/:id', (r) => Response.ok(body: 'user:${r.pathParam('id')}'))
         ..get('/users/:userId/posts',
             (r) => Response.ok(body: 'posts:${r.pathParam('userId')}'))
-        ..delete('/users/:key', (r) => Response.ok(body: 'del:${r.pathParam('key')}'));
+        ..delete('/users/:key',
+            (r) => Response.ok(body: 'del:${r.pathParam('key')}'));
 
       expect((await router(get('/users/5'))).body, 'user:5');
       expect((await router(get('/users/5'))).body, isNot(contains('null')));
@@ -279,8 +302,10 @@ void main() {
 
     test('wildcard names belong to the route', () async {
       final router = Router()
-        ..get('/files/*path', (r) => Response.ok(body: 'p:${r.pathParam('path')}'))
-        ..post('/files/*rest', (r) => Response.ok(body: 'r:${r.pathParam('rest')}'));
+        ..get('/files/*path',
+            (r) => Response.ok(body: 'p:${r.pathParam('path')}'))
+        ..post('/files/*rest',
+            (r) => Response.ok(body: 'r:${r.pathParam('rest')}'));
 
       expect((await router(get('/files/a/b'))).body, 'p:a/b');
       expect((await router(get('/files/a/b', 'POST'))).body, 'r:a/b');
@@ -304,16 +329,21 @@ void main() {
 
     test('a stray percent sign reaches the handler literally', () async {
       // Uri normalizes "%zz" to "%25zz" at parse time, so decoding cannot fail.
-      final router = Router()..get('/enc/:name', (r) => Response.ok(body: r.pathParam('name')));
+      final router = Router()
+        ..get('/enc/:name', (r) => Response.ok(body: r.pathParam('name')));
       final res = await router(get('/enc/%zz'));
       expect(res.statusCode, 200);
       expect(res.body, '%zz');
     });
 
-    test('rejects duplicate param names and non-terminal wildcards at registration', () {
+    test(
+        'rejects duplicate param names and non-terminal wildcards at registration',
+        () {
       final router = Router();
-      expect(() => router.get('/a/:id/b/:id', (r) => Response.ok()), throwsArgumentError);
-      expect(() => router.get('/a/*rest/b', (r) => Response.ok()), throwsArgumentError);
+      expect(() => router.get('/a/:id/b/:id', (r) => Response.ok()),
+          throwsArgumentError);
+      expect(() => router.get('/a/*rest/b', (r) => Response.ok()),
+          throwsArgumentError);
     });
   });
 }

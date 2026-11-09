@@ -9,7 +9,9 @@ void main() {
     test('Response.ok creates 200 with headers and body', () {
       final res = Response.ok(
         body: 'hello world',
-        headers: {'x-custom': ['val1']},
+        headers: {
+          'x-custom': ['val1']
+        },
       );
       expect(res.statusCode, equals(200));
       expect(res.body, equals('hello world'));
@@ -22,7 +24,8 @@ void main() {
       final res = Response.json(data);
 
       expect(res.statusCode, equals(200));
-      expect(res.getHeader('content-type'), equals('application/json; charset=utf-8'));
+      expect(res.getHeader('content-type'),
+          equals('application/json; charset=utf-8'));
       expect(res.body, equals(jsonEncode(data)));
     });
 

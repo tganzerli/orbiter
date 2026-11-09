@@ -29,6 +29,5 @@ extension RequestPathParamsExtension on Request {
       context.getOrNull<PathParameters>()?.values ?? const <String, String>{};
 
   /// Returns the value of route parameter [name], or `null` if not found.
-  String? pathParam(String name) =>
-      context.getOrNull<PathParameters>()?[name];
+  String? pathParam(String name) => context.getOrNull<PathParameters>()?[name];
 }

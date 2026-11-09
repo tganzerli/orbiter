@@ -73,13 +73,11 @@ void main() {
         return Response.ok(body: 'context:$configValue');
       });
 
-      final app = Pipeline()
-          .add((request, next) {
-            // Dependency injection via the heterogeneous RequestContext
-            request.context.set<String>('postgres-cluster-primary');
-            return next(request);
-          })
-          .addHandler(router.handler);
+      final app = Pipeline().add((request, next) {
+        // Dependency injection via the heterogeneous RequestContext
+        request.context.set<String>('postgres-cluster-primary');
+        return next(request);
+      }).addHandler(router.handler);
 
       server = await BackendServer.bind(
         handler: app,
@@ -94,8 +92,11 @@ void main() {
       await server.close(force: true);
     });
 
-    test('executes cleanup hooks in strict LIFO order after successful response', () async {
-      final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/resources/ok'));
+    test(
+        'executes cleanup hooks in strict LIFO order after successful response',
+        () async {
+      final req =
+          await client.getUrl(Uri.parse('http://127.0.0.1:$port/resources/ok'));
       final res = await req.close();
       expect(res.statusCode, equals(200));
 
@@ -111,8 +112,11 @@ void main() {
       expect(cleanupExecutionOrder, equals(['cleanup-res-2', 'cleanup-res-1']));
     });
 
-    test('guarantees cleanup hooks execution even when handler throws unhandled error', () async {
-      final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/resources/failing'));
+    test(
+        'guarantees cleanup hooks execution even when handler throws unhandled error',
+        () async {
+      final req = await client
+          .getUrl(Uri.parse('http://127.0.0.1:$port/resources/failing'));
       final res = await req.close();
 
       // The global ErrorBoundary converts it into a 500
@@ -124,8 +128,11 @@ void main() {
       expect(cleanupExecutionOrder, equals(['cleanup-failing-res']));
     });
 
-    test('resolves injected resources from RequestContext with zero allocation overhead', () async {
-      final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port/context/check'));
+    test(
+        'resolves injected resources from RequestContext with zero allocation overhead',
+        () async {
+      final req = await client
+          .getUrl(Uri.parse('http://127.0.0.1:$port/context/check'));
       final res = await req.close();
       expect(res.statusCode, equals(200));
 

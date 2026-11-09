@@ -33,6 +33,7 @@ request in a single interceptor.
 - **Safe defaults:** a 1 MiB body limit, generic `500`s to the client with details only on the server, CORS that
   refuses `*` with credentials, graceful shutdown that drains in-flight requests; `securityHeaders()` and
   `requestLogger()` ready to add.
+- **Multiple workers:** one server per isolate on the same port, each with its own pool and dependencies.
 
 ## Install
 
@@ -73,6 +74,38 @@ void main() async {
 ```
 
 [`example/main.dart`](example/main.dart) adds an interceptor of its own and a graceful shutdown.
+
+## Multiple workers
+
+`MultiWorkerServer` runs one server per isolate on the same port (`HttpServer.bind(shared: true)`), one per CPU
+core by default. You give it a setup function instead of a handler: it runs inside each worker, so the router,
+the connection pool and anything else it builds belong to that worker alone.
+
+```dart
+WorkerApp buildWorker(WorkerContext worker) {
+  final pool = openPool(); // one pool per worker
+  return WorkerApp(
+    handler: buildRouter(pool).handler,
+    onShutdown: pool.close, // runs after the worker's in-flight requests drain
+  );
+}
+
+final server = await MultiWorkerServer.start(setup: buildWorker, port: 8080);
+// ...
+await server.close();
+```
+
+- The isolate that calls `start` only supervises; it does not serve requests.
+- The setup function is sent to each isolate. If it captures something that cannot cross isolates (an open pool,
+  a `ReceivePort`), `start` throws. Build those objects inside the setup.
+- `port: 0` works: the first worker gets the ephemeral port and the others join it; read it from `server.port`.
+- For HTTPS, pass `securityContext: () => SecurityContext()..useCertificateChain(...)`. A `SecurityContext`
+  cannot cross isolates, so each worker builds its own.
+- If any worker fails to start, the others are stopped and `start` throws `MultiWorkerStartException`.
+- A worker that dies (an uncaught error) is reported to `onError` as `WorkerExitedException` and is not
+  restarted; the others keep serving. The connection that worker had open is never answered.
+
+[`example/multi_worker.dart`](example/multi_worker.dart) is a runnable version.
 
 ## The family
 

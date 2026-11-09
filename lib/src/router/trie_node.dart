@@ -64,7 +64,8 @@ final class TrieNode {
             'wildcard must be the last segment',
           );
         }
-        _addName(names, segment.length > 1 ? segment.substring(1) : 'wildcard', segments);
+        _addName(names, segment.length > 1 ? segment.substring(1) : 'wildcard',
+            segments);
         current = current.wildcardChild ??= TrieNode();
       } else if (segment.startsWith(':')) {
         _addName(names, segment.substring(1), segments);

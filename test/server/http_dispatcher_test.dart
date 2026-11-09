@@ -30,7 +30,9 @@ void main() {
           expect(request.uri.path, '/hello');
           return Response.ok(
             body: 'Hello World',
-            headers: {'x-custom-header': ['test-value']},
+            headers: {
+              'x-custom-header': ['test-value']
+            },
           );
         },
       );
@@ -46,7 +48,8 @@ void main() {
       expect(body, 'Hello World');
     });
 
-    test('dispatches POST request, reads body and writes JSON response', () async {
+    test('dispatches POST request, reads body and writes JSON response',
+        () async {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       baseUri = Uri.parse('http://${server.address.host}:${server.port}');
 
@@ -56,7 +59,8 @@ void main() {
           expect(payload['name'], 'Dart');
 
           return Response.created(
-            body: jsonEncode({'status': 'created', 'received': payload['name']}),
+            body:
+                jsonEncode({'status': 'created', 'received': payload['name']}),
             headers: {
               'content-type': ['application/json; charset=utf-8'],
             },
@@ -78,7 +82,8 @@ void main() {
       expect(json['received'], 'Dart');
     });
 
-    test('captures synchronous unhandled exception and returns 500 JSON', () async {
+    test('captures synchronous unhandled exception and returns 500 JSON',
+        () async {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       baseUri = Uri.parse('http://${server.address.host}:${server.port}');
 
@@ -101,7 +106,8 @@ void main() {
       expect(json['code'], 500);
     });
 
-    test('captures asynchronous unhandled rejection and returns 500 JSON', () async {
+    test('captures asynchronous unhandled rejection and returns 500 JSON',
+        () async {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       baseUri = Uri.parse('http://${server.address.host}:${server.port}');
 
@@ -149,7 +155,9 @@ void main() {
       expect(json['error'], 'Custom bad request');
     });
 
-    test('guarantees execution of cleanup hooks in finally block on success and error', () async {
+    test(
+        'guarantees execution of cleanup hooks in finally block on success and error',
+        () async {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       baseUri = Uri.parse('http://${server.address.host}:${server.port}');
 
@@ -187,7 +195,8 @@ void main() {
       expect(failureHookRan, isTrue);
     });
 
-    test('dispatches binary byte payloads and streaming responses intact', () async {
+    test('dispatches binary byte payloads and streaming responses intact',
+        () async {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       baseUri = Uri.parse('http://${server.address.host}:${server.port}');
 
@@ -197,7 +206,9 @@ void main() {
         rootHandler: (request) {
           return Response.bytes(
             binaryPayload,
-            headers: {'content-type': ['application/octet-stream']},
+            headers: {
+              'content-type': ['application/octet-stream']
+            },
           );
         },
       );
@@ -222,7 +233,8 @@ void main() {
     late Uri baseUri;
     late List<Object> reported;
 
-    Future<void> serve(Handler handler, {int? maxBodySize = 1024 * 1024}) async {
+    Future<void> serve(Handler handler,
+        {int? maxBodySize = 1024 * 1024}) async {
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       baseUri = Uri.parse('http://${server.address.host}:${server.port}');
       final dispatcher = HttpDispatcher(
@@ -243,10 +255,13 @@ void main() {
       await server.close(force: true);
     });
 
-    test('invalid response header yields 500 instead of a hanging connection', () async {
+    test('invalid response header yields 500 instead of a hanging connection',
+        () async {
       await serve((request) => Response.ok(
             body: 'x',
-            headers: {'x-bad': ['a\r\nInjected: 1']},
+            headers: {
+              'x-bad': ['a\r\nInjected: 1']
+            },
           ));
 
       final res = await (await client.getUrl(baseUri.replace(path: '/hdr')))
@@ -259,7 +274,8 @@ void main() {
       expect(reported, hasLength(1));
     });
 
-    test('a failing response stream closes the connection instead of hanging', () async {
+    test('a failing response stream closes the connection instead of hanging',
+        () async {
       await serve((request) => Response(
             200,
             body: Stream<List<int>>.error(StateError('mid-stream')),
@@ -267,8 +283,8 @@ void main() {
 
       final outcome = await () async {
         try {
-          final res = await (await client.getUrl(baseUri.replace(path: '/s')))
-              .close();
+          final res =
+              await (await client.getUrl(baseUri.replace(path: '/s'))).close();
           await res.drain<void>();
           return 'completed';
         } on HttpException {
@@ -281,7 +297,8 @@ void main() {
       expect(reported, hasLength(1));
     });
 
-    test('cleanup hooks run after the streamed body is fully written', () async {
+    test('cleanup hooks run after the streamed body is fully written',
+        () async {
       final order = <String>[];
       await serve((request) {
         request.addCleanupHook(() => order.add('cleanup'));
@@ -295,14 +312,16 @@ void main() {
         return Response(200, body: body);
       });
 
-      final res = await (await client.getUrl(baseUri.replace(path: '/s'))).close();
+      final res =
+          await (await client.getUrl(baseUri.replace(path: '/s'))).close();
       expect(await utf8.decoder.bind(res).join(), 'row');
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       expect(order, ['emit', 'cleanup']);
     });
 
-    test('cleanup hooks still run when the client disconnects mid-stream', () async {
+    test('cleanup hooks still run when the client disconnects mid-stream',
+        () async {
       final cleaned = Completer<void>();
       final release = Completer<void>();
       await serve((request) {
@@ -319,7 +338,8 @@ void main() {
         return Response(200, body: body());
       });
 
-      final res = await (await client.getUrl(baseUri.replace(path: '/s'))).close();
+      final res =
+          await (await client.getUrl(baseUri.replace(path: '/s'))).close();
       await res.first;
       client.close(force: true);
       release.complete();
@@ -329,7 +349,8 @@ void main() {
 
     test('body above maxBodySize yields 413 (content-length known)', () async {
       await serve(
-        (request) async => Response.ok(body: '${(await request.readAsBytes()).length}'),
+        (request) async =>
+            Response.ok(body: '${(await request.readAsBytes()).length}'),
         maxBodySize: 16,
       );
 
@@ -343,7 +364,8 @@ void main() {
 
     test('body above maxBodySize yields 413 (chunked)', () async {
       await serve(
-        (request) async => Response.ok(body: '${(await request.readAsBytes()).length}'),
+        (request) async =>
+            Response.ok(body: '${(await request.readAsBytes()).length}'),
         maxBodySize: 16,
       );
 
@@ -359,7 +381,8 @@ void main() {
 
     test('body within maxBodySize is read intact', () async {
       await serve(
-        (request) async => Response.ok(body: '${(await request.readAsBytes()).length}'),
+        (request) async =>
+            Response.ok(body: '${(await request.readAsBytes()).length}'),
         maxBodySize: 16,
       );
 
@@ -374,16 +397,19 @@ void main() {
     test('unhandled handler errors are reported to onError', () async {
       await serve((request) => throw StateError('boom'));
 
-      final res = await (await client.getUrl(baseUri.replace(path: '/x'))).close();
+      final res =
+          await (await client.getUrl(baseUri.replace(path: '/x'))).close();
       await res.drain<void>();
 
       expect(res.statusCode, 500);
       expect(reported.single, isA<StateError>());
     });
 
-    test('exposes the raw HttpRequest and headers without copying eagerly', () async {
+    test('exposes the raw HttpRequest and headers without copying eagerly',
+        () async {
       await serve((request) => Response.ok(
-            body: '${request.rawRequest != null}:${request.getHeader('X-Probe')}',
+            body:
+                '${request.rawRequest != null}:${request.getHeader('X-Probe')}',
           ));
 
       final req = await client.getUrl(baseUri.replace(path: '/h'));

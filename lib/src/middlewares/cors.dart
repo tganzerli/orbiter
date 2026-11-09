@@ -44,13 +44,15 @@ InterceptorFunction cors({
   // Fixed headers, built once at setup.
   final common = <String, List<String>>{
     if (exposeHeaders != null && exposeHeaders.isNotEmpty)
-      'access-control-expose-headers': List.unmodifiable([exposeHeaders.join(', ')]),
+      'access-control-expose-headers':
+          List.unmodifiable([exposeHeaders.join(', ')]),
     if (allowCredentials) 'access-control-allow-credentials': const ['true'],
   };
   final preflightOnly = <String, List<String>>{
     'access-control-allow-methods': List.unmodifiable([methods.join(', ')]),
     'access-control-allow-headers': List.unmodifiable([headers.join(', ')]),
-    if (maxAge != null) 'access-control-max-age': List.unmodifiable([maxAge.toString()]),
+    if (maxAge != null)
+      'access-control-max-age': List.unmodifiable([maxAge.toString()]),
   };
   // With '*' the response is identical for any origin: ready-made maps at setup, without
   // Origin or Vary.
@@ -64,7 +66,8 @@ InterceptorFunction cors({
   });
 
   // Explicit list: reflects the accepted origin; `null` when it is not accepted.
-  Map<String, List<String>>? reflected(String? origin, {required bool preflight}) {
+  Map<String, List<String>>? reflected(String? origin,
+      {required bool preflight}) {
     if (origin == null || !allowed.contains(origin)) return null;
     return {
       ...common,
@@ -86,7 +89,8 @@ InterceptorFunction cors({
 
     if (isPreflight) {
       return Response.noContent(
-        headers: _withVary(reflected(origin, preflight: true) ?? const {}, null),
+        headers:
+            _withVary(reflected(origin, preflight: true) ?? const {}, null),
       );
     }
 
@@ -108,5 +112,8 @@ Map<String, List<String>> _withVary(
       : existingVary.toLowerCase().contains('origin')
           ? existingVary
           : '$existingVary, Origin';
-  return {...headers, 'vary': [vary]};
+  return {
+    ...headers,
+    'vary': [vary]
+  };
 }

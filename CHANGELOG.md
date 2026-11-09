@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+- `MultiWorkerServer`: one `BackendServer` per isolate on the same port, built by a `WorkerSetup` that runs
+  inside each worker (`WorkerApp`, `WorkerContext`), with coordinated shutdown. Start failures throw
+  `MultiWorkerStartException`; a worker that dies is reported as `WorkerExitedException`. No change to the
+  existing API.
+
 ## 0.1.4
 
 Documentation only: README rewritten, a runnable example (`example/main.dart`), dartdoc on the `Request`,

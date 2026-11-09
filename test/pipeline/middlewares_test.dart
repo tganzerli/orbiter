@@ -4,7 +4,8 @@ import 'package:test/test.dart';
 void main() {
   group('Middlewares', () {
     group('cors', () {
-      test('short-circuits preflight OPTIONS request with 204 and CORS headers', () async {
+      test('short-circuits preflight OPTIONS request with 204 and CORS headers',
+          () async {
         var handlerCalled = false;
 
         final pipeline = Pipeline().add(
@@ -35,9 +36,11 @@ void main() {
 
         expect(response.statusCode, 204);
         expect(handlerCalled, isFalse);
-        expect(response.getHeader('access-control-allow-origin'), 'https://app.example.com');
+        expect(response.getHeader('access-control-allow-origin'),
+            'https://app.example.com');
         expect(response.getHeader('access-control-allow-methods'), 'GET, POST');
-        expect(response.getHeader('access-control-allow-headers'), 'Content-Type, Authorization');
+        expect(response.getHeader('access-control-allow-headers'),
+            'Content-Type, Authorization');
         expect(response.getHeader('access-control-allow-credentials'), 'true');
         expect(response.getHeader('access-control-max-age'), '3600');
       });
@@ -63,10 +66,13 @@ void main() {
 
         expect(response.statusCode, 200);
         expect(response.body, 'data');
-        expect(response.getHeader('access-control-allow-origin'), 'https://client.app');
+        expect(response.getHeader('access-control-allow-origin'),
+            'https://client.app');
       });
 
-      Request withOrigin(String method, String? origin, {bool preflight = false}) => Request(
+      Request withOrigin(String method, String? origin,
+              {bool preflight = false}) =>
+          Request(
             uri: Uri.parse('http://localhost/api'),
             method: method,
             headers: {
@@ -75,14 +81,16 @@ void main() {
             },
           );
 
-      test('reflects a single allowed origin among several and adds Vary', () async {
+      test('reflects a single allowed origin among several and adds Vary',
+          () async {
         final handler = Pipeline()
             .add(cors(origins: ['https://a.com', 'https://b.com']))
             .addHandler((request) => Response.ok(body: 'data'));
 
         final response = await handler(withOrigin('GET', 'https://b.com'));
 
-        expect(response.headers['access-control-allow-origin'], ['https://b.com']);
+        expect(
+            response.headers['access-control-allow-origin'], ['https://b.com']);
         expect(response.getHeader('vary'), contains('Origin'));
       });
 
@@ -169,7 +177,10 @@ void main() {
 
         expect(() => handler(request), throwsA(isA<StateError>()));
         expect(logs, hasLength(1));
-        expect(logs.first, contains('[HTTP] POST /crash -> ERROR: Bad state: Simulated crash'));
+        expect(
+            logs.first,
+            contains(
+                '[HTTP] POST /crash -> ERROR: Bad state: Simulated crash'));
       });
     });
 

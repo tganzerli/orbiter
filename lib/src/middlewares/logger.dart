@@ -20,14 +20,16 @@ InterceptorFunction requestLogger({LogWriter? logFn}) {
       stopwatch.stop();
 
       final durationMs = stopwatch.elapsedMilliseconds;
-      write('[HTTP] ${request.method} ${request.uri.path} -> ${response.statusCode} (${durationMs}ms)');
+      write(
+          '[HTTP] ${request.method} ${request.uri.path} -> ${response.statusCode} (${durationMs}ms)');
 
       return response;
     } catch (error) {
       stopwatch.stop();
 
       final durationMs = stopwatch.elapsedMilliseconds;
-      write('[HTTP] ${request.method} ${request.uri.path} -> ERROR: $error (${durationMs}ms)');
+      write(
+          '[HTTP] ${request.method} ${request.uri.path} -> ERROR: $error (${durationMs}ms)');
 
       rethrow;
     }

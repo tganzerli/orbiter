@@ -13,5 +13,8 @@ export 'src/middlewares/security_headers.dart';
 export 'src/pipeline/pipeline.dart';
 export 'src/server/backend_server.dart';
 export 'src/server/http_dispatcher.dart';
+export 'src/server/multi_worker_server.dart';
+export 'src/server/worker_isolate.dart'
+    show WorkerApp, WorkerContext, WorkerSetup;
 export 'src/router/path_parameters.dart';
 export 'src/router/router.dart';

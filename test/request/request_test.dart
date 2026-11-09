@@ -77,10 +77,13 @@ void main() {
         maxBodySize: 16,
       );
 
-      await expectLater(req.readAsBytes(), throwsA(isA<PayloadTooLargeException>()));
+      await expectLater(
+          req.readAsBytes(), throwsA(isA<PayloadTooLargeException>()));
     });
 
-    test('readAsBytes rejects a declared content-length above maxBodySize before reading', () async {
+    test(
+        'readAsBytes rejects a declared content-length above maxBodySize before reading',
+        () async {
       var listened = false;
       final req = Request(
         method: 'POST',
@@ -95,7 +98,8 @@ void main() {
         maxBodySize: 16,
       );
 
-      await expectLater(req.readAsBytes(), throwsA(isA<PayloadTooLargeException>()));
+      await expectLater(
+          req.readAsBytes(), throwsA(isA<PayloadTooLargeException>()));
       expect(listened, isFalse);
     });
 
@@ -109,7 +113,8 @@ void main() {
       expect((await req.readAsBytes()).length, 4096);
     });
 
-    test('runCleanupHooks reports hook errors and still runs the others', () async {
+    test('runCleanupHooks reports hook errors and still runs the others',
+        () async {
       final req = Request(method: 'GET', uri: Uri.parse('http://localhost/'));
       final reported = <Object>[];
       var ran = false;

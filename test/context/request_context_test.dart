@@ -46,7 +46,8 @@ void main() {
       context.setKey('correlation_id', 'corr-abc-999');
 
       expect(context.hasKey('correlation_id'), isTrue);
-      expect(context.getKeyOrNull<String>('correlation_id'), equals('corr-abc-999'));
+      expect(context.getKeyOrNull<String>('correlation_id'),
+          equals('corr-abc-999'));
       expect(context.getKeyOrNull<String>('unknown_key'), isNull);
     });
 
