@@ -34,6 +34,8 @@ request in a single interceptor.
   refuses `*` with credentials, graceful shutdown that drains in-flight requests; `securityHeaders()` and
   `requestLogger()` ready to add.
 - **Multiple workers:** one server per isolate on the same port, each with its own pool and dependencies.
+- **Admission control:** an optional `ConcurrencyLimit` caps the requests running at once, queues a few for a
+  short time and answers the rest with `503` and `Retry-After`, so overload is refused fast instead of piling up.
 
 ## Install
 
@@ -208,6 +210,14 @@ it somewhere else, e.g. `requestLogger(logFn: log.info)`.
   `Vary: Origin`); other origins get no CORS headers. Only `OPTIONS` requests carrying `Origin` and
   `Access-Control-Request-Method` are treated as preflight.
 * **Path parameters** are percent-decoded before reaching the handler.
+* **Concurrency limit (opt-in):** `BackendServer.bind(concurrencyLimit: ConcurrencyLimit(maxInFlight: 32))`
+  admits at most `maxInFlight` requests at once. A request holds its slot until its cleanup hooks finish, which is
+  where a database transaction or connection is released. When every slot is taken, up to `maxQueued` requests
+  (default: `maxInFlight`) wait in arrival order for at most `queueTimeout` (default 250 ms); the rest get `503`
+  with `Retry-After` (default 1 s) and `{"error":"Service Unavailable","code":503}`, without running the handler.
+  `HttpDispatcher` exposes `admitted`, `queued` and `rejected`. With `MultiWorkerServer` the limit is per worker.
+  There is no per-request timeout: a running handler cannot be cancelled, so bound the time where the work happens
+  (the database's `statement_timeout`, the pool's acquire timeout).
 
 ## Example with PostgreSQL
 

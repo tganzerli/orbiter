@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'concurrency_limit.dart';
 import 'http_dispatcher.dart';
 import 'worker_isolate.dart';
 
@@ -66,8 +67,9 @@ final class MultiWorkerServer {
   ///
   /// With [port] `0`, the first worker gets an ephemeral port from the OS and the
   /// others bind to it. [securityContext] runs inside each worker, because a
-  /// [SecurityContext] cannot cross isolates. [maxBodySize] and [backlog] apply to
-  /// each worker as in [BackendServer.bind].
+  /// [SecurityContext] cannot cross isolates. [maxBodySize], [backlog] and
+  /// [concurrencyLimit] apply to each worker as in [BackendServer.bind]: the limit is
+  /// per worker, as each worker has its own resources (a database pool, for instance).
   ///
   /// Resolves once every worker is listening. If any worker fails (setup throws, the
   /// bind fails, or [setup] captures an object that cannot cross isolates), the
@@ -86,6 +88,7 @@ final class MultiWorkerServer {
     int? maxBodySize = defaultMaxBodySize,
     int backlog = 0,
     ErrorReporter? onError,
+    ConcurrencyLimit? concurrencyLimit,
   }) async {
     final count = workers ?? Platform.numberOfProcessors;
     if (count < 1) {
@@ -101,6 +104,7 @@ final class MultiWorkerServer {
           securityContext: securityContext,
           maxBodySize: maxBodySize,
           backlog: backlog,
+          concurrencyLimit: concurrencyLimit,
           supervisor: supervisor,
         );
 

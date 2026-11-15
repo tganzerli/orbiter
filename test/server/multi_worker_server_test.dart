@@ -162,6 +162,23 @@ void main() {
     expect(status, 200);
   });
 
+  test('the concurrency limit reaches the worker', () async {
+    final server = await MultiWorkerServer.start(
+      setup: _plainSetup,
+      workers: 1,
+      address: InternetAddress.loopbackIPv4,
+      port: 0,
+      concurrencyLimit: ConcurrencyLimit(maxInFlight: 1, maxQueued: 0),
+    );
+    servers.add(server);
+    final slow = _get(client, server.port, '/slow');
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    final (status, body) = await _get(client, server.port);
+    expect(status, 503);
+    expect(body, contains('Service Unavailable'));
+    expect((await slow).$1, 200);
+  });
+
   test('a failing setup fails start and shuts down the workers already up',
       () async {
     final events = _Events();

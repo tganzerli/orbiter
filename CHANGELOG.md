@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6
+
+- `ConcurrencyLimit`: opt-in admission control for `BackendServer.bind`, `MultiWorkerServer.start` (per worker)
+  and `HttpDispatcher`. At most `maxInFlight` requests run at once, each holding its slot until its cleanup hooks
+  finish; up to `maxQueued` wait in arrival order for at most `queueTimeout`; the rest get `503` with
+  `Retry-After` and a JSON body, without running the handler. `HttpDispatcher` gains `admitted`, `queued` and
+  `rejected`. Without the option nothing changes.
+
 ## 0.1.5
 
 - `MultiWorkerServer`: one `BackendServer` per isolate on the same port, built by a `WorkerSetup` that runs

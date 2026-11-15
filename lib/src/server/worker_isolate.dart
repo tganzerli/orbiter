@@ -4,6 +4,7 @@ import 'dart:isolate';
 
 import '../pipeline/handler.dart';
 import 'backend_server.dart';
+import 'concurrency_limit.dart';
 import 'http_dispatcher.dart';
 
 /// Identity of a worker, passed to its [WorkerSetup].
@@ -61,6 +62,7 @@ final class WorkerBoot {
     required this.securityContext,
     required this.maxBodySize,
     required this.backlog,
+    this.concurrencyLimit,
     required this.supervisor,
   });
 
@@ -71,6 +73,7 @@ final class WorkerBoot {
   final SecurityContext Function()? securityContext;
   final int? maxBodySize;
   final int backlog;
+  final ConcurrencyLimit? concurrencyLimit;
   final SendPort supervisor;
 }
 
@@ -118,6 +121,7 @@ Future<void> workerMain(WorkerBoot boot) async {
       onError: app.onError,
       maxBodySize: boot.maxBodySize,
       backlog: boot.backlog,
+      concurrencyLimit: boot.concurrencyLimit,
     );
   } catch (error, stackTrace) {
     commands.close();

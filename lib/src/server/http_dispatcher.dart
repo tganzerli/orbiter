@@ -6,6 +6,7 @@ import '../pipeline/handler.dart';
 import '../request/payload_too_large_exception.dart';
 import '../request/request.dart';
 import '../response/response.dart';
+import 'concurrency_limit.dart';
 
 /// Signature of the global error handler (Error Boundary).
 typedef ErrorHandler = FutureOr<Response> Function(
@@ -54,11 +55,27 @@ final class HttpDispatcher {
   /// Request body limit in bytes; `null` disables the limit.
   final int? maxBodySize;
 
+  /// Admission control; `null` (the default) admits every request.
+  final ConcurrencyLimit? concurrencyLimit;
+
+  final AdmissionGate? _gate;
+  final Response? _unavailable;
+
   int _inFlight = 0;
   Completer<void>? _idle;
 
-  /// Requests whose cycle (handler, write and cleanup hooks) has not finished yet.
+  /// Requests whose cycle (handler, write and cleanup hooks) has not finished yet,
+  /// including those waiting for a slot or being refused under [concurrencyLimit].
   int get inFlight => _inFlight;
+
+  /// Requests holding a slot of [concurrencyLimit]; `0` without a limit.
+  int get admitted => _gate?.active ?? 0;
+
+  /// Requests waiting for a slot of [concurrencyLimit].
+  int get queued => _gate?.queued ?? 0;
+
+  /// Requests refused with 503 by [concurrencyLimit] since the dispatcher was created.
+  int get rejected => _gate?.rejected ?? 0;
 
   /// Creates an instance of [HttpDispatcher].
   ///
@@ -70,15 +87,36 @@ final class HttpDispatcher {
     ErrorHandler? errorHandler,
     ErrorReporter? onError,
     this.maxBodySize = defaultMaxBodySize,
+    this.concurrencyLimit,
   })  : errorHandler = errorHandler ?? _defaultErrorHandler,
-        onError = onError ?? _defaultReporter;
+        onError = onError ?? _defaultReporter,
+        _gate =
+            concurrencyLimit == null ? null : AdmissionGate(concurrencyLimit),
+        _unavailable = concurrencyLimit == null
+            ? null
+            : _serviceUnavailable(concurrencyLimit.retryAfterSeconds);
 
   /// Processes a single HTTP request emitted by the [HttpServer].
   Future<void> dispatch(HttpRequest ioRequest) async {
-    _inFlight++;
+    // Built before taking a slot, so nothing between the slot and the `try`
+    // below can throw and leave the slot held.
     final request =
         Request.fromHttpRequest(ioRequest, maxBodySize: maxBodySize);
-
+    _inFlight++;
+    final gate = _gate;
+    if (gate != null) {
+      final slot = gate.acquire();
+      final admitted = slot is bool ? slot : await slot;
+      if (!admitted) {
+        // Refused before any Request exists: no handler, no cleanup hooks.
+        try {
+          await _writeRefusal(ioRequest.response);
+        } finally {
+          if (--_inFlight == 0) _idle?.complete();
+        }
+        return;
+      }
+    }
     try {
       Response response;
       try {
@@ -96,8 +134,27 @@ final class HttpDispatcher {
           onError: (error, stackTrace) => _report(error, stackTrace, request),
         );
       } finally {
+        // The slot is given back only after the hooks, which release what the
+        // request held (a database transaction, for instance).
+        gate?.release();
         if (--_inFlight == 0) _idle?.complete();
       }
+    }
+  }
+
+  Future<void> _writeRefusal(HttpResponse ioResponse) async {
+    final response = _unavailable!;
+    try {
+      ioResponse.statusCode = response.statusCode;
+      response.headers.forEach(ioResponse.headers.set);
+      ioResponse.add(response.body! as List<int>);
+    } catch (_) {
+      // The client may already be gone; close() below still runs.
+    }
+    try {
+      await ioResponse.close();
+    } catch (_) {
+      // Socket already closed by the remote client; nothing else to do.
     }
   }
 
@@ -291,6 +348,15 @@ final class HttpDispatcher {
     },
     body: utf8.encode('{"error":"Payload Too Large","code":413}'),
   );
+
+  static Response _serviceUnavailable(int retryAfterSeconds) => Response(
+        503,
+        headers: <String, List<String>>{
+          'content-type': const ['application/json; charset=utf-8'],
+          'retry-after': [retryAfterSeconds.toString()],
+        },
+        body: utf8.encode('{"error":"Service Unavailable","code":503}'),
+      );
 
   /// Pre-allocated static safe fallback response.
   static final Response _fallbackErrorResponse = Response(

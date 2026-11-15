@@ -2,7 +2,7 @@ name: orbiter
 description: >
   High-throughput, low-allocation HTTP backend framework for Dart.
   Designed for maximum concurrency and minimal GC pressure over dart:io.
-version: 0.1.5
+version: 0.1.6
 
 repository: https://github.com/tganzerli/orbiter
 topics:

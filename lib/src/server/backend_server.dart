@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../pipeline/handler.dart';
+import 'concurrency_limit.dart';
 import 'http_dispatcher.dart';
 
 /// High-performance HTTP server built directly on the [HttpServer] of the `dart:io`
@@ -28,6 +29,8 @@ final class BackendServer {
   /// - [onError]: Reporter for unhandled errors and write failures (default: `stderr`).
   /// - [maxBodySize]: Request body limit in bytes (default 1 MiB; `null` disables it).
   /// - [backlog]: Size of the socket's pending connection queue.
+  /// - [concurrencyLimit]: Admission control (requests at once, queue, 503 with
+  ///   `Retry-After`); `null` (the default) admits every request.
   static Future<BackendServer> bind({
     required Handler handler,
     dynamic address,
@@ -38,6 +41,7 @@ final class BackendServer {
     ErrorReporter? onError,
     int? maxBodySize = defaultMaxBodySize,
     int backlog = 0,
+    ConcurrencyLimit? concurrencyLimit,
   }) async {
     final targetAddress = address ?? InternetAddress.anyIPv4;
 
@@ -64,6 +68,7 @@ final class BackendServer {
       errorHandler: errorHandler,
       onError: onError,
       maxBodySize: maxBodySize,
+      concurrencyLimit: concurrencyLimit,
     );
 
     final instance = BackendServer._(server, dispatcher);
