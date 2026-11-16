@@ -54,6 +54,18 @@ Future<WorkerApp> _diesDuringStartSetup(WorkerContext context) async {
   return _idApp(context);
 }
 
+/// Refusal with the request's origin echoed, as a CORS layer would do.
+Response _corsRefusal(Request request, int retryAfterSeconds) => Response.json(
+      {'error': 'busy', 'retryAfter': retryAfterSeconds},
+      statusCode: 503,
+      headers: {
+        'access-control-allow-origin': [request.getHeader('origin') ?? '*'],
+      },
+    );
+
+ExemptPredicate _exemptPath(String path) =>
+    (request) => request.uri.path == path;
+
 Future<(int, String)> _get(HttpClient client, int port,
     [String path = '/']) async {
   final request =
@@ -177,6 +189,61 @@ void main() {
     expect(status, 503);
     expect(body, contains('Service Unavailable'));
     expect((await slow).$1, 200);
+  });
+
+  test('rejectResponse and exempt travel to the worker', () async {
+    final server = await MultiWorkerServer.start(
+      setup: _plainSetup,
+      workers: 1,
+      address: InternetAddress.loopbackIPv4,
+      port: 0,
+      concurrencyLimit: ConcurrencyLimit(
+        maxInFlight: 1,
+        maxQueued: 0,
+        rejectResponse: _corsRefusal,
+        exempt: _exemptPath('/ready'),
+      ),
+    );
+    servers.add(server);
+    final slow = _get(client, server.port, '/slow');
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    final request = await client.get(
+        InternetAddress.loopbackIPv4.address, server.port, '/');
+    request.persistentConnection = false;
+    request.headers.set('origin', 'https://app.example');
+    final response = await request.close();
+    final body = await response.transform(utf8.decoder).join();
+    expect(response.statusCode, 503);
+    expect(response.headers.value('access-control-allow-origin'),
+        'https://app.example');
+    expect(response.headers.value('retry-after'), '1');
+    expect(jsonDecode(body), {'error': 'busy', 'retryAfter': 1});
+
+    expect((await _get(client, server.port, '/ready')).$1, 200);
+    expect((await slow).$1, 200);
+  });
+
+  test('a rejectResponse that captures an unsendable object fails start',
+      () async {
+    final unsendable = ReceivePort();
+    addTearDown(unsendable.close);
+    await expectLater(
+      MultiWorkerServer.start(
+        setup: _plainSetup,
+        workers: 1,
+        address: InternetAddress.loopbackIPv4,
+        port: 0,
+        concurrencyLimit: ConcurrencyLimit(
+          maxInFlight: 1,
+          rejectResponse: (request, retryAfter) {
+            unsendable.hashCode;
+            return Response(503);
+          },
+        ),
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
   });
 
   test('a failing setup fails start and shuts down the workers already up',

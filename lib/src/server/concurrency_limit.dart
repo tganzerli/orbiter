@@ -3,6 +3,22 @@ import 'dart:collection';
 
 import 'package:meta/meta.dart';
 
+import '../request/request.dart';
+import '../response/response.dart';
+
+/// Builds the response for a request refused by a [ConcurrencyLimit].
+///
+/// [retryAfterSeconds] is [ConcurrencyLimit.retryAfterSeconds]; when the
+/// returned response has no `retry-after` header, the server adds one with
+/// that value.
+typedef RejectResponseBuilder = FutureOr<Response> Function(
+  Request request,
+  int retryAfterSeconds,
+);
+
+/// Decides whether a request bypasses a [ConcurrencyLimit].
+typedef ExemptPredicate = bool Function(Request request);
+
 /// Admission control for a server: how many requests run at once, how many
 /// may wait for a slot, and for how long.
 ///
@@ -24,6 +40,15 @@ import 'package:meta/meta.dart';
 ///   concurrencyLimit: ConcurrencyLimit(maxInFlight: 32),
 /// );
 /// ```
+///
+/// [rejectResponse] lets the application build the refusal from the request,
+/// for example to add the CORS headers a browser needs to see the `503`, and
+/// [exempt] lets cheap probes such as `/ready` skip the limit.
+///
+/// With `MultiWorkerServer`, the limit is sent to every worker isolate, so
+/// [rejectResponse] and [exempt] must be top-level or static functions, or
+/// closures that capture only values that can be sent between isolates;
+/// otherwise the server fails to start.
 final class ConcurrencyLimit {
   /// Requests admitted at the same time. Must be positive.
   final int maxInFlight;
@@ -39,6 +64,36 @@ final class ConcurrencyLimit {
   /// rounded up.
   final Duration retryAfter;
 
+  /// Builds the response for a refused request; `null` (the default) sends
+  /// `503` with a JSON body and `Retry-After`.
+  ///
+  /// The response is written like a handler's (any body type). A missing
+  /// `retry-after` header is added. If the builder throws or its future
+  /// fails, the error goes to the server's error reporter and the default
+  /// refusal is sent; a header value that `dart:io` rejects turns it into a
+  /// `500`, as for a handler. Cleanup hooks registered on the request run
+  /// after the response is written. The handler still never runs, and a
+  /// refused request holds no slot while its response is built.
+  ///
+  /// It runs for every refusal, that is, under overload, with no limit or
+  /// timeout of its own: keep it cheap and make sure its future completes.
+  ///
+  /// Under `MultiWorkerServer` it must be sendable between isolates: see the
+  /// class documentation.
+  final RejectResponseBuilder? rejectResponse;
+
+  /// Requests for which this returns `true` skip the limit: they take no
+  /// slot, never queue and are never refused. `null` (the default) exempts
+  /// nothing.
+  ///
+  /// Meant for cheap probes such as a readiness check: whatever is exempt
+  /// has no limit at all. If the predicate throws, the error goes to the
+  /// server's error reporter and the request goes through the limit.
+  ///
+  /// Under `MultiWorkerServer` it must be sendable between isolates: see the
+  /// class documentation.
+  final ExemptPredicate? exempt;
+
   /// Creates a limit. [maxQueued] defaults to [maxInFlight].
   ///
   /// Throws [ArgumentError] when [maxInFlight] is not positive, [maxQueued]
@@ -48,6 +103,8 @@ final class ConcurrencyLimit {
     int? maxQueued,
     this.queueTimeout = const Duration(milliseconds: 250),
     this.retryAfter = const Duration(seconds: 1),
+    this.rejectResponse,
+    this.exempt,
   }) : maxQueued = maxQueued ?? maxInFlight {
     if (maxInFlight <= 0) {
       throw ArgumentError.value(maxInFlight, 'maxInFlight', 'must be positive');

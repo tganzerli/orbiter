@@ -59,6 +59,8 @@ final class HttpDispatcher {
   final ConcurrencyLimit? concurrencyLimit;
 
   final AdmissionGate? _gate;
+  final ExemptPredicate? _exempt;
+  final RejectResponseBuilder? _rejectResponse;
   final Response? _unavailable;
 
   int _inFlight = 0;
@@ -74,7 +76,7 @@ final class HttpDispatcher {
   /// Requests waiting for a slot of [concurrencyLimit].
   int get queued => _gate?.queued ?? 0;
 
-  /// Requests refused with 503 by [concurrencyLimit] since the dispatcher was created.
+  /// Requests refused by [concurrencyLimit] since the dispatcher was created.
   int get rejected => _gate?.rejected ?? 0;
 
   /// Creates an instance of [HttpDispatcher].
@@ -92,6 +94,8 @@ final class HttpDispatcher {
         onError = onError ?? _defaultReporter,
         _gate =
             concurrencyLimit == null ? null : AdmissionGate(concurrencyLimit),
+        _exempt = concurrencyLimit?.exempt,
+        _rejectResponse = concurrencyLimit?.rejectResponse,
         _unavailable = concurrencyLimit == null
             ? null
             : _serviceUnavailable(concurrencyLimit.retryAfterSeconds);
@@ -103,14 +107,15 @@ final class HttpDispatcher {
     final request =
         Request.fromHttpRequest(ioRequest, maxBodySize: maxBodySize);
     _inFlight++;
-    final gate = _gate;
+    var gate = _gate;
+    if (gate != null && _exempt != null && _isExempt(request)) gate = null;
     if (gate != null) {
       final slot = gate.acquire();
       final admitted = slot is bool ? slot : await slot;
       if (!admitted) {
-        // Refused before any Request exists: no handler, no cleanup hooks.
+        // Refused: the handler never runs and no slot is held.
         try {
-          await _writeRefusal(ioRequest.response);
+          await _writeRefusal(ioRequest.response, request);
         } finally {
           if (--_inFlight == 0) _idle?.complete();
         }
@@ -142,7 +147,63 @@ final class HttpDispatcher {
     }
   }
 
-  Future<void> _writeRefusal(HttpResponse ioResponse) async {
+  /// Whether [request] skips the [concurrencyLimit]; a throwing predicate is
+  /// reported and the request goes through the limit.
+  bool _isExempt(Request request) {
+    try {
+      return _exempt!(request);
+    } catch (error, stackTrace) {
+      _report(error, stackTrace, request);
+      return false;
+    }
+  }
+
+  /// Writes the refusal: the pre-built default, or the response of
+  /// [ConcurrencyLimit.rejectResponse] (default again if it fails), followed
+  /// by the request's cleanup hooks.
+  Future<void> _writeRefusal(HttpResponse ioResponse, Request request) async {
+    final build = _rejectResponse;
+    if (build == null) return _writeUnavailable(ioResponse);
+    try {
+      Response? response;
+      try {
+        final retryAfter = concurrencyLimit!.retryAfterSeconds;
+        final result = build(request, retryAfter);
+        response = _withRetryAfter(
+          result is Future<Response> ? await result : result,
+          retryAfter,
+        );
+      } catch (error, stackTrace) {
+        _report(error, stackTrace, request);
+      }
+      if (response == null) {
+        await _writeUnavailable(ioResponse);
+      } else {
+        await _writeResponse(response, ioResponse, request);
+      }
+    } finally {
+      await request.runCleanupHooks(
+        onError: (error, stackTrace) => _report(error, stackTrace, request),
+      );
+    }
+  }
+
+  /// [response] with a `retry-after` header, added only when missing.
+  static Response _withRetryAfter(Response response, int retryAfterSeconds) {
+    for (final name in response.headers.keys) {
+      if (name.toLowerCase() == 'retry-after') return response;
+    }
+    return Response(
+      response.statusCode,
+      headers: <String, List<String>>{
+        ...response.headers,
+        'retry-after': [retryAfterSeconds.toString()],
+      },
+      body: response.body,
+    );
+  }
+
+  Future<void> _writeUnavailable(HttpResponse ioResponse) async {
     final response = _unavailable!;
     try {
       ioResponse.statusCode = response.statusCode;

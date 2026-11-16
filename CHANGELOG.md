@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.7
+
+- `ConcurrencyLimit.rejectResponse`: builds the refusal from the request (for example with CORS headers, so a
+  browser sees the `503`), written like a handler response; `Retry-After` is added when missing, and the default
+  refusal goes out if the builder fails. Cleanup hooks registered on the request run after the write.
+- `ConcurrencyLimit.exempt`: requests for which the predicate returns `true` skip the limit (no slot, no queue,
+  no refusal); meant for cheap probes such as `/ready`.
+- New exported typedefs `RejectResponseBuilder` and `ExemptPredicate`. Under `MultiWorkerServer` both functions
+  travel to the worker isolates and must be sendable, or the server fails to start. Without them nothing changes.
+
 ## 0.1.6
 
 - `ConcurrencyLimit`: opt-in admission control for `BackendServer.bind`, `MultiWorkerServer.start` (per worker)

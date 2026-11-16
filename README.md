@@ -216,6 +216,11 @@ it somewhere else, e.g. `requestLogger(logFn: log.info)`.
   (default: `maxInFlight`) wait in arrival order for at most `queueTimeout` (default 250 ms); the rest get `503`
   with `Retry-After` (default 1 s) and `{"error":"Service Unavailable","code":503}`, without running the handler.
   `HttpDispatcher` exposes `admitted`, `queued` and `rejected`. With `MultiWorkerServer` the limit is per worker.
+  `rejectResponse: (request, retryAfterSeconds) => …` builds the refusal instead, for example with the CORS headers
+  a browser needs to see the `503` (`Retry-After` is added when missing; if the builder fails, the default goes
+  out). `exempt: (request) => request.uri.path == '/ready'` lets cheap probes skip the limit entirely. Under
+  `MultiWorkerServer` both must be sendable to the worker isolates (top-level functions, or closures over sendable
+  values).
   There is no per-request timeout: a running handler cannot be cancelled, so bound the time where the work happens
   (the database's `statement_timeout`, the pool's acquire timeout).
 
